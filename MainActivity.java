@@ -1,8 +1,10 @@
 package com.example.lgremote;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.hardware.ConsumerIrManager;
 import android.os.Bundle;
@@ -13,46 +15,50 @@ import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.GridLayout;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 /**
  * ИК-пульт для телевизора LG 32LB530U (протокол NEC, адрес 0x04, несущая 38 кГц).
- * Использует встроенный ИК-порт телефона (Redmi Note 10 Pro) через ConsumerIrManager.
  */
 public class MainActivity extends Activity {
 
     private static final int CARRIER_HZ = 38000;
 
-    // ---- Коды LG (NEC, 32 бита, передаются старшим битом вперёд) ----
-    private static final int POWER   = 0x20DF10EF;
-    private static final int INPUT   = 0x20DFD02F;
-    private static final int MUTE    = 0x20DF906F;
-    private static final int VOL_UP  = 0x20DF40BF;
-    private static final int VOL_DN  = 0x20DFC03F;
-    private static final int CH_UP   = 0x20DF00FF;
-    private static final int CH_DN   = 0x20DF807F;
-    private static final int MENU    = 0x20DFC23D; // SETTINGS - главное меню
-    private static final int QMENU   = 0x20DFA25D;
-    private static final int UP      = 0x20DF02FD;
-    private static final int DOWN    = 0x20DF827D;
-    private static final int LEFT    = 0x20DFE01F;
-    private static final int RIGHT   = 0x20DF609F;
-    private static final int OK      = 0x20DF22DD;
-    private static final int BACK    = 0x20DF14EB;
-    private static final int EXIT    = 0x20DFDA25;
-    private static final int[] DIGITS = {
+    // ---- Коды LG (NEC, 32 бита) ----
+    private static final int POWER     = 0x20DF10EF;
+    private static final int INPUT     = 0x20DFD02F;
+    private static final int TV_RAD    = 0x20DF0FF0; // Переключение TV/Radio
+    private static final int MUTE      = 0x20DF906F;
+    private static final int VOL_UP    = 0x20DF40BF;
+    private static final int VOL_DN    = 0x20DFC03F;
+    private static final int CH_UP     = 0x20DF00FF;
+    private static final int CH_DN     = 0x20DF807F;
+    private static final int MENU      = 0x20DFC23D; // SETTINGS
+    private static final int QMENU     = 0x20DFA25D; // Q.MENU / APPS
+    private static final int SLEEP     = 0x20DF708F; // Таймер сна
+    private static final int UP        = 0x20DF02FD;
+    private static final int DOWN      = 0x20DF827D;
+    private static final int LEFT      = 0x20DFE01F;
+    private static final int RIGHT     = 0x20DF609F;
+    private static final int OK        = 0x20DF22DD;
+    private static final int BACK      = 0x20DF14EB;
+    private static final int EXIT      = 0x20DFDA25;
+    private static final int[] DIGITS  = {
             0x20DF08F7, 0x20DF8877, 0x20DF48B7, 0x20DFC837, 0x20DF28D7,
             0x20DFA857, 0x20DF6897, 0x20DFE817, 0x20DF18E7, 0x20DF9867
     };
 
-    private static final int COLOR_BG     = Color.parseColor("#14161A");
-    private static final int COLOR_KEY    = Color.parseColor("#2A2E36");
-    private static final int COLOR_ACCENT = Color.parseColor("#3D6FE0");
-    private static final int COLOR_POWER  = Color.parseColor("#D32F2F");
+    // ---- Палитра как на фото ----
+    private static final int BG_DARK      = Color.parseColor("#0B1626");
+    private static final int BTN_DARK     = Color.parseColor("#112138");
+    private static final int BTN_STROKE   = Color.parseColor("#3B6496");
+    private static final int BTN_BLUE     = Color.parseColor("#3278C6");
+    private static final int BTN_RED      = Color.parseColor("#D92B2B");
+    private static final int TEXT_LIGHT   = Color.parseColor("#E3EEFA");
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private ConsumerIrManager ir;
@@ -65,173 +71,133 @@ public class MainActivity extends Activity {
         ir = (ConsumerIrManager) getSystemService(Context.CONSUMER_IR_SERVICE);
         hasIr = ir != null && ir.hasIrEmitter();
 
-        ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(COLOR_BG);
-        scroll.setFillViewport(true);
-
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(12), dp(16), dp(12), dp(24));
-        scroll.addView(root, new ViewGroup.LayoutParams(
+        root.setBackgroundColor(BG_DARK);
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        root.setPadding(dp(20), dp(14), dp(20), dp(14));
+
+        // 1. Верхняя красная кнопка питания
+        TextView btnPower = createPillButton("⏻", POWER, false, BTN_RED, Color.TRANSPARENT, 20);
+        LinearLayout.LayoutParams lpPower = new LinearLayout.LayoutParams(dp(74), dp(38));
+        lpPower.bottomMargin = dp(12);
+        root.addView(btnPower, lpPower);
+
+        // 2. Ряд: TV | ⌂ | ▭ (Input/Screen)
+        LinearLayout rowTop = new LinearLayout(this);
+        rowTop.setOrientation(LinearLayout.HORIZONTAL);
+        rowTop.setGravity(Gravity.CENTER);
+        rowTop.addView(createPillButton("TV", TV_RAD, false, BTN_DARK, BTN_STROKE, 13), pillParams(72, 36, 14));
+        rowTop.addView(createPillButton("⌂", QMENU, false, BTN_DARK, BTN_STROKE, 18), pillParams(72, 36, 14));
+        rowTop.addView(createPillButton("◫", INPUT, false, BTN_DARK, BTN_STROKE, 16), pillParams(72, 36, 0));
+        LinearLayout.LayoutParams lpRowTop = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lpRowTop.bottomMargin = dp(8);
+        root.addView(rowTop, lpRowTop);
+
+        // 3. Ряд: INPUT (слева) и APPS (справа)
+        LinearLayout rowInputApps = new LinearLayout(this);
+        rowInputApps.setOrientation(LinearLayout.HORIZONTAL);
+        rowInputApps.setGravity(Gravity.CENTER_VERTICAL);
+        rowInputApps.addView(createPillButton("INPUT", INPUT, false, BTN_DARK, BTN_STROKE, 12),
+                new LinearLayout.LayoutParams(dp(74), dp(36)));
+        View space1 = new View(this);
+        rowInputApps.addView(space1, new LinearLayout.LayoutParams(0, 1, 1f));
+        rowInputApps.addView(createPillButton("APPS", QMENU, false, BTN_DARK, BTN_STROKE, 12),
+                new LinearLayout.LayoutParams(dp(74), dp(36)));
+        root.addView(rowInputApps, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        TextView title = new TextView(this);
-        title.setText("Пульт LG 32LB530U");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(20);
-        title.setGravity(Gravity.CENTER);
-        root.addView(title);
+        // 4. Большая круглая крестовина с OK в центре
+        FrameLayout dpadContainer = new FrameLayout(this);
+        int dpadSize = dp(210);
+        LinearLayout.LayoutParams lpDpad = new LinearLayout.LayoutParams(dpadSize, dpadSize);
+        lpDpad.topMargin = dp(-6);
+        lpDpad.bottomMargin = dp(-6);
 
-        TextView status = new TextView(this);
-        status.setTextSize(13);
-        status.setGravity(Gravity.CENTER);
-        status.setPadding(0, dp(4), 0, dp(8));
-        if (hasIr) {
-            status.setText("ИК-порт найден. Направьте верх телефона на телевизор.");
-            status.setTextColor(Color.parseColor("#8BC34A"));
-        } else {
-            status.setText("На этом устройстве нет ИК-передатчика.");
-            status.setTextColor(Color.parseColor("#FF8A80"));
-        }
-        root.addView(status);
+        View dpadCircle = new View(this);
+        GradientDrawable dpadBg = new GradientDrawable();
+        dpadBg.setShape(GradientDrawable.OVAL);
+        dpadBg.setColor(BTN_BLUE);
+        dpadCircle.setBackground(dpadBg);
+        dpadContainer.addView(dpadCircle, new FrameLayout.LayoutParams(dpadSize, dpadSize));
 
-        root.addView(row(
-                key("Вкл/Выкл", POWER, false, COLOR_POWER),
-                key("Вход", INPUT, false, COLOR_KEY),
-                key("Без звука", MUTE, false, COLOR_KEY)));
+        // Стрелки на круге
+        dpadContainer.addView(createDpadArrow("△", UP, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 10, 0, 0));
+        dpadContainer.addView(createDpadArrow("▽", DOWN, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 10));
+        dpadContainer.addView(createDpadArrow("◁", LEFT, Gravity.START | Gravity.CENTER_VERTICAL, 14, 0, 0, 0));
+        dpadContainer.addView(createDpadArrow("▷", RIGHT, Gravity.END | Gravity.CENTER_VERTICAL, 0, 0, 14, 0));
 
-        root.addView(row(
-                key("Громк +", VOL_UP, true, COLOR_ACCENT),
-                key("Канал +", CH_UP, true, COLOR_ACCENT)));
-        root.addView(row(
-                key("Громк −", VOL_DN, true, COLOR_ACCENT),
-                key("Канал −", CH_DN, true, COLOR_ACCENT)));
+        // Центральный круг OK
+        int okSize = dp(76);
+        TextView btnOk = new TextView(this);
+        btnOk.setText("OK");
+        btnOk.setTextColor(TEXT_LIGHT);
+        btnOk.setTextSize(17);
+        btnOk.setTypeface(null, Typeface.BOLD);
+        btnOk.setGravity(Gravity.CENTER);
+        GradientDrawable okBg = new GradientDrawable();
+        okBg.setShape(GradientDrawable.OVAL);
+        okBg.setColor(BG_DARK);
+        btnOk.setBackground(okBg);
+        attachTouch(btnOk, OK, false);
+        FrameLayout.LayoutParams lpOk = new FrameLayout.LayoutParams(okSize, okSize, Gravity.CENTER);
+        dpadContainer.addView(btnOk, lpOk);
 
-        root.addView(row(
-                key("Меню", MENU, false, COLOR_KEY),
-                key("Q.Меню", QMENU, false, COLOR_KEY)));
+        root.addView(dpadContainer, lpDpad);
 
-        root.addView(row(spacer(), key("▲", UP, true, COLOR_KEY), spacer()));
-        root.addView(row(key("◀", LEFT, true, COLOR_KEY), key("OK", OK, false, COLOR_ACCENT),
-                key("▶", RIGHT, true, COLOR_KEY)));
-        root.addView(row(spacer(), key("▼", DOWN, true, COLOR_KEY), spacer()));
+        // 5. Ряд: ← (Назад) слева и EXIT справа
+        LinearLayout rowBackExit = new LinearLayout(this);
+        rowBackExit.setOrientation(LinearLayout.HORIZONTAL);
+        rowBackExit.setGravity(Gravity.CENTER_VERTICAL);
+        rowBackExit.addView(createPillButton("←", BACK, false, BTN_DARK, BTN_STROKE, 18),
+                new LinearLayout.LayoutParams(dp(74), dp(36)));
+        View space2 = new View(this);
+        rowBackExit.addView(space2, new LinearLayout.LayoutParams(0, 1, 1f));
+        rowBackExit.addView(createPillButton("EXIT", EXIT, false, BTN_DARK, BTN_STROKE, 12),
+                new LinearLayout.LayoutParams(dp(74), dp(36)));
+        LinearLayout.LayoutParams lpBackExit = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lpBackExit.bottomMargin = dp(14);
+        root.addView(rowBackExit, lpBackExit);
 
-        root.addView(row(
-                key("Назад", BACK, false, COLOR_KEY),
-                key("Выход", EXIT, false, COLOR_KEY)));
+        // 6. Блок громкости (VOL), центральных кнопок (MENU, MUTE, SLEEP) и каналов (CH)
+        LinearLayout midBlock = new LinearLayout(this);
+        midBlock.setOrientation(LinearLayout.HORIZONTAL);
+        midBlock.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams lpMid = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        lpMid.bottomMargin = dp(10);
 
-        root.addView(row(digit(1), digit(2), digit(3)));
-        root.addView(row(digit(4), digit(5), digit(6)));
-        root.addView(row(digit(7), digit(8), digit(9)));
-        root.addView(row(spacer(), digit(0), spacer()));
+        // Левая капсула VOL
+        midBlock.addView(createRocker("VOL", VOL_UP, VOL_DN), new LinearLayout.LayoutParams(dp(64), dp(176)));
 
-        setContentView(scroll);
-    }
+        // Центральная колонка: MENU, MUTE, SLEEP
+        LinearLayout centerCol = new LinearLayout(this);
+        centerCol.setOrientation(LinearLayout.VERTICAL);
+        centerCol.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams lpCenterCol = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
 
-    @Override
-    protected void onDestroy() {
-        handler.removeCallbacksAndMessages(null);
-        super.onDestroy();
-    }
+        TextView btnMenu = createPillButton("MENU", MENU, false, BTN_DARK, BTN_STROKE, 12);
+        LinearLayout.LayoutParams lpMenu = new LinearLayout.LayoutParams(dp(74), dp(36));
+        lpMenu.bottomMargin = dp(16);
+        centerCol.addView(btnMenu, lpMenu);
 
-    // ---------------- ИК ----------------
+        TextView btnMute = createCircleButton("🔇", MUTE, BTN_DARK, BTN_STROKE, 16);
+        LinearLayout.LayoutParams lpMute = new LinearLayout.LayoutParams(dp(52), dp(52));
+        lpMute.bottomMargin = dp(16);
+        centerCol.addView(btnMute, lpMute);
 
-    /** Строит NEC-кадр: 9 мс + 4,5 мс заголовок, 32 бита, стоп-бит. Значения в микросекундах. */
-    static int[] buildNec(int code) {
-        int[] p = new int[2 + 32 * 2 + 1];
-        int i = 0;
-        p[i++] = 9000;
-        p[i++] = 4500;
-        for (int b = 31; b >= 0; b--) {
-            p[i++] = 560;
-            p[i++] = (((code >>> b) & 1) == 1) ? 1690 : 560;
-        }
-        p[i] = 560;
-        return p;
-    }
+        TextView btnSleep = createPillButton("SLEEP", SLEEP, false, BTN_DARK, BTN_STROKE, 12);
+        centerCol.addView(btnSleep, new LinearLayout.LayoutParams(dp(74), dp(36)));
 
-    private void send(int code) {
-        if (!hasIr) {
-            Toast.makeText(this, "ИК-передатчика нет на этом устройстве", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        try {
-            ir.transmit(CARRIER_HZ, buildNec(code));
-            getWindow().getDecorView().performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-        } catch (Exception e) {
-            Toast.makeText(this, "Ошибка передачи ИК", Toast.LENGTH_SHORT).show();
-        }
-    }
+        midBlock.addView(centerCol, lpCenterCol);
 
-    // ---------------- UI ----------------
+        // Правая капсула CH
+        midBlock.addView(createRocker("CH", CH_UP, CH_DN), new LinearLayout.LayoutParams(dp(64), dp(176)));
 
-    private Button key(String label, final int code, final boolean repeat, int color) {
-        final Button b = new Button(this);
-        b.setText(label);
-        b.setTextColor(Color.WHITE);
-        b.setTextSize(17);
-        b.setAllCaps(false);
-        GradientDrawable d = new GradientDrawable();
-        d.setColor(color);
-        d.setCornerRadius(dp(14));
-        b.setBackground(d);
+        root.addView(midBlock, lpMid);
 
-        b.setOnTouchListener(new View.OnTouchListener() {
-            private Runnable repeater;
-
-            @Override
-            public boolean onTouch(View v, MotionEvent e) {
-                switch (e.getActionMasked()) {
-                    case MotionEvent.ACTION_DOWN:
-                        v.setAlpha(0.6f);
-                        send(code);
-                        if (repeat) {
-                            repeater = new Runnable() {
-                                @Override
-                                public void run() {
-                                    send(code);
-                                    handler.postDelayed(this, 150);
-                                }
-                            };
-                            handler.postDelayed(repeater, 450);
-                        }
-                        return true;
-                    case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
-                        v.setAlpha(1f);
-                        if (repeater != null) {
-                            handler.removeCallbacks(repeater);
-                            repeater = null;
-                        }
-                        return true;
-                    default:
-                        return true;
-                }
-            }
-        });
-        return b;
-    }
-
-    private Button digit(int n) {
-        return key(String.valueOf(n), DIGITS[n], false, COLOR_KEY);
-    }
-
-    private View spacer() {
-        return new View(this);
-    }
-
-    private LinearLayout row(View... views) {
-        LinearLayout r = new LinearLayout(this);
-        r.setOrientation(LinearLayout.HORIZONTAL);
-        for (View v : views) {
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(60), 1f);
-            lp.setMargins(dp(4), dp(4), dp(4), dp(4));
-            r.addView(v, lp);
-        }
-        return r;
-    }
-
-    private int dp(int v) {
-        return (int) (v * getResources().getDisplayMetrics().density + 0.5f);
-    }
-}
+        // 7. Нижняя панель навигации как на фото (Курсор/Статус | Цифры 123 | Настройки)
+        LinearLayout bottomBar = new LinearLayout(this);
+        bottomBar.setOrientation(LinearLayout.HORIZONTAL);
