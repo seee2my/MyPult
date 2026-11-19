@@ -21,25 +21,21 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-/**
- * ИК-пульт для телевизора LG 32LB530U (протокол NEC, адрес 0x04, несущая 38 кГц).
- */
 public class MainActivity extends Activity {
 
     private static final int CARRIER_HZ = 38000;
 
-    // ---- Коды LG (NEC, 32 бита) ----
     private static final int POWER     = 0x20DF10EF;
     private static final int INPUT     = 0x20DFD02F;
-    private static final int TV_RAD    = 0x20DF0FF0; // Переключение TV/Radio
+    private static final int TV_RAD    = 0x20DF0FF0;
     private static final int MUTE      = 0x20DF906F;
     private static final int VOL_UP    = 0x20DF40BF;
     private static final int VOL_DN    = 0x20DFC03F;
     private static final int CH_UP     = 0x20DF00FF;
     private static final int CH_DN     = 0x20DF807F;
-    private static final int MENU      = 0x20DFC23D; // SETTINGS
-    private static final int QMENU     = 0x20DFA25D; // Q.MENU / APPS
-    private static final int SLEEP     = 0x20DF708F; // Таймер сна
+    private static final int MENU      = 0x20DFC23D;
+    private static final int QMENU     = 0x20DFA25D;
+    private static final int SLEEP     = 0x20DF708F;
     private static final int UP        = 0x20DF02FD;
     private static final int DOWN      = 0x20DF827D;
     private static final int LEFT      = 0x20DFE01F;
@@ -52,7 +48,6 @@ public class MainActivity extends Activity {
             0x20DFA857, 0x20DF6897, 0x20DFE817, 0x20DF18E7, 0x20DF9867
     };
 
-    // ---- Палитра как на фото ----
     private static final int BG_DARK      = Color.parseColor("#0B1626");
     private static final int BTN_DARK     = Color.parseColor("#112138");
     private static final int BTN_STROKE   = Color.parseColor("#3B6496");
@@ -77,13 +72,11 @@ public class MainActivity extends Activity {
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         root.setPadding(dp(20), dp(14), dp(20), dp(14));
 
-        // 1. Верхняя красная кнопка питания
         TextView btnPower = createPillButton("⏻", POWER, false, BTN_RED, Color.TRANSPARENT, 20);
         LinearLayout.LayoutParams lpPower = new LinearLayout.LayoutParams(dp(74), dp(38));
         lpPower.bottomMargin = dp(12);
         root.addView(btnPower, lpPower);
 
-        // 2. Ряд: TV | ⌂ | ▭ (Input/Screen)
         LinearLayout rowTop = new LinearLayout(this);
         rowTop.setOrientation(LinearLayout.HORIZONTAL);
         rowTop.setGravity(Gravity.CENTER);
@@ -95,20 +88,17 @@ public class MainActivity extends Activity {
         lpRowTop.bottomMargin = dp(8);
         root.addView(rowTop, lpRowTop);
 
-        // 3. Ряд: INPUT (слева) и APPS (справа)
         LinearLayout rowInputApps = new LinearLayout(this);
         rowInputApps.setOrientation(LinearLayout.HORIZONTAL);
         rowInputApps.setGravity(Gravity.CENTER_VERTICAL);
         rowInputApps.addView(createPillButton("INPUT", INPUT, false, BTN_DARK, BTN_STROKE, 12),
                 new LinearLayout.LayoutParams(dp(74), dp(36)));
-        View space1 = new View(this);
-        rowInputApps.addView(space1, new LinearLayout.LayoutParams(0, 1, 1f));
+        rowInputApps.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         rowInputApps.addView(createPillButton("APPS", QMENU, false, BTN_DARK, BTN_STROKE, 12),
                 new LinearLayout.LayoutParams(dp(74), dp(36)));
         root.addView(rowInputApps, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        // 4. Большая круглая крестовина с OK в центре
         FrameLayout dpadContainer = new FrameLayout(this);
         int dpadSize = dp(210);
         LinearLayout.LayoutParams lpDpad = new LinearLayout.LayoutParams(dpadSize, dpadSize);
@@ -122,13 +112,11 @@ public class MainActivity extends Activity {
         dpadCircle.setBackground(dpadBg);
         dpadContainer.addView(dpadCircle, new FrameLayout.LayoutParams(dpadSize, dpadSize));
 
-        // Стрелки на круге
         dpadContainer.addView(createDpadArrow("△", UP, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 10, 0, 0));
         dpadContainer.addView(createDpadArrow("▽", DOWN, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 10));
         dpadContainer.addView(createDpadArrow("◁", LEFT, Gravity.START | Gravity.CENTER_VERTICAL, 14, 0, 0, 0));
         dpadContainer.addView(createDpadArrow("▷", RIGHT, Gravity.END | Gravity.CENTER_VERTICAL, 0, 0, 14, 0));
 
-        // Центральный круг OK
         int okSize = dp(76);
         TextView btnOk = new TextView(this);
         btnOk.setText("OK");
@@ -141,19 +129,16 @@ public class MainActivity extends Activity {
         okBg.setColor(BG_DARK);
         btnOk.setBackground(okBg);
         attachTouch(btnOk, OK, false);
-        FrameLayout.LayoutParams lpOk = new FrameLayout.LayoutParams(okSize, okSize, Gravity.CENTER);
-        dpadContainer.addView(btnOk, lpOk);
+        dpadContainer.addView(btnOk, new FrameLayout.LayoutParams(okSize, okSize, Gravity.CENTER));
 
         root.addView(dpadContainer, lpDpad);
 
-        // 5. Ряд: ← (Назад) слева и EXIT справа
         LinearLayout rowBackExit = new LinearLayout(this);
         rowBackExit.setOrientation(LinearLayout.HORIZONTAL);
         rowBackExit.setGravity(Gravity.CENTER_VERTICAL);
         rowBackExit.addView(createPillButton("←", BACK, false, BTN_DARK, BTN_STROKE, 18),
                 new LinearLayout.LayoutParams(dp(74), dp(36)));
-        View space2 = new View(this);
-        rowBackExit.addView(space2, new LinearLayout.LayoutParams(0, 1, 1f));
+        rowBackExit.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         rowBackExit.addView(createPillButton("EXIT", EXIT, false, BTN_DARK, BTN_STROKE, 12),
                 new LinearLayout.LayoutParams(dp(74), dp(36)));
         LinearLayout.LayoutParams lpBackExit = new LinearLayout.LayoutParams(
@@ -161,7 +146,6 @@ public class MainActivity extends Activity {
         lpBackExit.bottomMargin = dp(14);
         root.addView(rowBackExit, lpBackExit);
 
-        // 6. Блок громкости (VOL), центральных кнопок (MENU, MUTE, SLEEP) и каналов (CH)
         LinearLayout midBlock = new LinearLayout(this);
         midBlock.setOrientation(LinearLayout.HORIZONTAL);
         midBlock.setGravity(Gravity.CENTER);
@@ -169,10 +153,8 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         lpMid.bottomMargin = dp(10);
 
-        // Левая капсула VOL
         midBlock.addView(createRocker("VOL", VOL_UP, VOL_DN), new LinearLayout.LayoutParams(dp(64), dp(176)));
 
-        // Центральная колонка: MENU, MUTE, SLEEP
         LinearLayout centerCol = new LinearLayout(this);
         centerCol.setOrientation(LinearLayout.VERTICAL);
         centerCol.setGravity(Gravity.CENTER);
@@ -192,12 +174,31 @@ public class MainActivity extends Activity {
         centerCol.addView(btnSleep, new LinearLayout.LayoutParams(dp(74), dp(36)));
 
         midBlock.addView(centerCol, lpCenterCol);
-
-        // Правая капсула CH
         midBlock.addView(createRocker("CH", CH_UP, CH_DN), new LinearLayout.LayoutParams(dp(64), dp(176)));
-
         root.addView(midBlock, lpMid);
 
-        // 7. Нижняя панель навигации как на фото (Курсор/Статус | Цифры 123 | Настройки)
         LinearLayout bottomBar = new LinearLayout(this);
         bottomBar.setOrientation(LinearLayout.HORIZONTAL);
+        bottomBar.setGravity(Gravity.CENTER_VERTICAL);
+        bottomBar.setPadding(dp(24), dp(4), dp(24), dp(4));
+
+        TextView iconIr = new TextView(this);
+        iconIr.setText("🖱");
+        iconIr.setTextSize(18);
+        iconIr.setTextColor(hasIr ? Color.parseColor("#4CAF50") : Color.parseColor("#FF5252"));
+        iconIr.setOnClickListener(v -> Toast.makeText(this,
+                hasIr ? "ІЧ-порт готовий до роботи" : "ІЧ-передавач не знайдено", Toast.LENGTH_SHORT).show());
+        bottomBar.addView(iconIr);
+
+        bottomBar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+
+        TextView iconNum = new TextView(this);
+        iconNum.setText("⠿");
+        iconNum.setTextSize(22);
+        iconNum.setTextColor(TEXT_LIGHT);
+        iconNum.setOnClickListener(v -> showNumpadDialog());
+        bottomBar.addView(iconNum);
+
+        bottomBar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+
+        TextView iconSet = new TextView(this);
