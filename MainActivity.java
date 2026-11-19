@@ -183,22 +183,207 @@ public class MainActivity extends Activity {
         bottomBar.setPadding(dp(24), dp(4), dp(24), dp(4));
 
         TextView iconIr = new TextView(this);
-        iconIr.setText("🖱");
-        iconIr.setTextSize(18);
-        iconIr.setTextColor(hasIr ? Color.parseColor("#4CAF50") : Color.parseColor("#FF5252"));
-        iconIr.setOnClickListener(v -> Toast.makeText(this,
-                hasIr ? "ІЧ-порт готовий до роботи" : "ІЧ-передавач не знайдено", Toast.LENGTH_SHORT).show());
-        bottomBar.addView(iconIr);
+                iconSet.setText("⚙");
+        iconSet.setTextSize(20);
+        iconSet.setTextColor(TEXT_LIGHT);
+        attachTouch(iconSet, MENU, false);
+        bottomBar.addView(iconSet);
 
-        bottomBar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+        root.addView(bottomBar, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        TextView iconNum = new TextView(this);
-        iconNum.setText("⠿");
-        iconNum.setTextSize(22);
-        iconNum.setTextColor(TEXT_LIGHT);
-        iconNum.setOnClickListener(v -> showNumpadDialog());
-        bottomBar.addView(iconNum);
+        setContentView(root);
+    }
 
-        bottomBar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+    @Override
+    protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
+        super.onDestroy();
+    }
 
-        TextView iconSet = new TextView(this);
+    private void showNumpadDialog() {
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(3);
+        grid.setBackgroundColor(BG_DARK);
+        grid.setPadding(dp(16), dp(16), dp(16), dp(16));
+
+        int[] order = {1, 2, 3, 4, 5, 6, 7, 8, 9, -1, 0, -2};
+        for (int n : order) {
+            if (n == -1) {
+                grid.addView(new View(this), new ViewGroup.LayoutParams(dp(76), dp(46)));
+            } else if (n == -2) {
+                TextView closeBtn = createPillButton("✕", EXIT, false, BTN_RED, Color.TRANSPARENT, 15);
+                GridLayout.LayoutParams glp = new GridLayout.LayoutParams();
+                glp.width = dp(76);
+                glp.height = dp(46);
+                glp.setMargins(dp(6), dp(6), dp(6), dp(6));
+                grid.addView(closeBtn, glp);
+            } else {
+                TextView btn = createPillButton(String.valueOf(n), DIGITS[n], false, BTN_DARK, BTN_STROKE, 16);
+                GridLayout.LayoutParams glp = new GridLayout.LayoutParams();
+                glp.width = dp(76);
+                glp.height = dp(46);
+                glp.setMargins(dp(6), dp(6), dp(6), dp(6));
+                grid.addView(btn, glp);
+            }
+        }
+        new AlertDialog.Builder(this).setView(grid).show();
+    }
+
+    static int[] buildNec(int code) {
+        int[] p = new int[2 + 32 * 2 + 1];
+        int i = 0;
+        p[i++] = 9000;
+        p[i++] = 4500;
+        for (int b = 31; b >= 0; b--) {
+            p[i++] = 560;
+            p[i++] = (((code >>> b) & 1) == 1) ? 1690 : 560;
+        }
+        p[i] = 560;
+        return p;
+    }
+
+    private void send(int code) {
+        if (!hasIr) {
+            Toast.makeText(this, "ІК-передавача немає на цьому пристрої", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            ir.transmit(CARRIER_HZ, buildNec(code));
+            getWindow().getDecorView().performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        } catch (Exception e) {
+            Toast.makeText(this, "Помилка передачі ІК", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private TextView createPillButton(String label, int code, boolean repeat, int fillColor, int strokeColor, int textSp) {
+        TextView tv = new TextView(this);
+        tv.setText(label);
+        tv.setTextColor(TEXT_LIGHT);
+        tv.setTextSize(textSp);
+        tv.setGravity(Gravity.CENTER);
+        tv.setTypeface(null, Typeface.BOLD);
+
+        GradientDrawable gd = new GradientDrawable();
+        gd.setColor(fillColor);
+        gd.setCornerRadius(dp(50));
+        if (strokeColor != Color.TRANSPARENT) {
+            gd.setStroke(dp(1), strokeColor);
+        }
+        tv.setBackground(gd);
+        attachTouch(tv, code, repeat);
+        return tv;
+    }
+
+    private TextView createCircleButton(String label, int code, int fillColor, int strokeColor, int textSp) {
+        TextView tv = new TextView(this);
+        tv.setText(label);
+        tv.setTextColor(TEXT_LIGHT);
+        tv.setTextSize(textSp);
+        tv.setGravity(Gravity.CENTER);
+
+        GradientDrawable gd = new GradientDrawable();
+        gd.setShape(GradientDrawable.OVAL);
+        gd.setColor(fillColor);
+        gd.setStroke(dp(1), strokeColor);
+        tv.setBackground(gd);
+        attachTouch(tv, code, false);
+        return tv;
+    }
+
+    private TextView createDpadArrow(String symbol, int code, int gravity, int l, int t, int r, int b) {
+        TextView tv = new TextView(this);
+        tv.setText(symbol);
+        tv.setTextColor(TEXT_LIGHT);
+        tv.setTextSize(20);
+        tv.setGravity(Gravity.CENTER);
+        attachTouch(tv, code, true);
+
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(56), dp(56), gravity);
+        lp.setMargins(dp(l), dp(t), dp(r), dp(b));
+        return tv;
+    }
+
+    private LinearLayout createRocker(String title, int codeUp, int codeDown) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER);
+
+        GradientDrawable gd = new GradientDrawable();
+        gd.setColor(BTN_BLUE);
+        gd.setCornerRadius(dp(32));
+        box.setBackground(gd);
+
+        TextView plus = new TextView(this);
+        plus.setText("+");
+        plus.setTextColor(TEXT_LIGHT);
+        plus.setTextSize(22);
+        plus.setGravity(Gravity.CENTER);
+        attachTouch(plus, codeUp, true);
+        box.addView(plus, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        TextView label = new TextView(this);
+        label.setText(title);
+        label.setTextColor(TEXT_LIGHT);
+        label.setTextSize(14);
+        label.setTypeface(null, Typeface.BOLD);
+        label.setGravity(Gravity.CENTER);
+        box.addView(label, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        TextView minus = new TextView(this);
+        minus.setText("−");
+        minus.setTextColor(TEXT_LIGHT);
+        minus.setTextSize(22);
+        minus.setGravity(Gravity.CENTER);
+        attachTouch(minus, codeDown, true);
+        box.addView(minus, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        return box;
+    }
+
+    private void attachTouch(View v, final int code, final boolean repeat) {
+        v.setOnTouchListener(new View.OnTouchListener() {
+            private Runnable repeater;
+
+            @Override
+            public boolean onTouch(View view, MotionEvent e) {
+                switch (e.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        view.setAlpha(0.55f);
+                        send(code);
+                        if (repeat) {
+                            repeater = new Runnable() {
+                                @Override
+                                public void run() {
+                                    send(code);
+                                    handler.postDelayed(this, 150);
+                                }
+                            };
+                            handler.postDelayed(repeater, 450);
+                        }
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        view.setAlpha(1f);
+                        if (repeater != null) {
+                            handler.removeCallbacks(repeater);
+                            repeater = null;
+                        }
+                        return true;
+                    default:
+                        return true;
+                }
+            }
+        });
+    }
+
+    private LinearLayout.LayoutParams pillParams(int wDp, int hDp, int rightMarginDp) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(wDp), dp(hDp));
+        lp.rightMargin = dp(rightMarginDp);
+        return lp;
+    }
+
+    private int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+}
