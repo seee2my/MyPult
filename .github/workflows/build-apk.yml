@@ -32,7 +32,7 @@ jobs:
           cp MainActivity.java "app/src/main/java/$PKG_PATH/"
 
           if [ -f "ic_launcher.png" ]; then
-            convert ic_launcher.png -resize 512x512! PNG32:app/src/main/res/drawable/ic_launcher.png
+            python3 -c "from PIL import Image; Image.open('ic_launcher.png').resize((512, 512)).save('app/src/main/res/drawable/ic_launcher.png', 'PNG')" 2>/dev/null || cp ic_launcher.png app/src/main/res/drawable/ic_launcher.png
           fi
 
           cat << EOF > app/build.gradle
@@ -63,6 +63,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LGRemote-apk
+          path: app/build/outputs/apk/debug/*.apk
+
           path: app/build/outputs/apk/debug/*.apk
 
 
