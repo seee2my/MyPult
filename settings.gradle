@@ -19,3 +19,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "LGRemote"
 include ':app'
+
