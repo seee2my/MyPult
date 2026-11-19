@@ -182,13 +182,31 @@ public class MainActivity extends Activity {
         bottomBar.setGravity(Gravity.CENTER_VERTICAL);
         bottomBar.setPadding(dp(24), dp(4), dp(24), dp(4));
 
-        TextView iconIr = new TextView(this);
-                iconSet.setText("⚙");
+                TextView iconIr = new TextView(this);
+        iconIr.setText("🖱");
+        iconIr.setTextSize(18);
+        iconIr.setTextColor(hasIr ? Color.parseColor("#4CAF50") : Color.parseColor("#FF5252"));
+        iconIr.setOnClickListener(v -> Toast.makeText(this,
+                hasIr ? "ІЧ-порт готовий до роботи" : "ІЧ-передавач не знайдено", Toast.LENGTH_SHORT).show());
+        bottomBar.addView(iconIr);
+
+        bottomBar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+
+        TextView iconNum = new TextView(this);
+        iconNum.setText("⠿");
+        iconNum.setTextSize(22);
+        iconNum.setTextColor(TEXT_LIGHT);
+        iconNum.setOnClickListener(v -> showNumpadDialog());
+        bottomBar.addView(iconNum);
+
+        bottomBar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+
+        TextView iconSet = new TextView(this);
+        iconSet.setText("⚙");
         iconSet.setTextSize(20);
         iconSet.setTextColor(TEXT_LIGHT);
         attachTouch(iconSet, MENU, false);
         bottomBar.addView(iconSet);
-
         root.addView(bottomBar, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
