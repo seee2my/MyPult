@@ -22,10 +22,31 @@ jobs:
 
       - name: Organize Android folders
         run: |
-          mkdir -p app/src/main/java/com/example/lgremote
+          PKG=$(grep -m 1 "^package " MainActivity.java | sed 's/package //;s/;//' | tr -d '\r ')
+          PKG_PATH=$(echo "$PKG" | tr '.' '/')
+          mkdir -p "app/src/main/java/$PKG_PATH"
           cp AndroidManifest.xml app/src/main/
-          cp MainActivity.java app/src/main/java/com/example/lgremote/
-          mv build.gradle app/build.gradle
+          cp MainActivity.java "app/src/main/java/$PKG_PATH/"
+          cat << EOF > app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+          android {
+              namespace '$PKG'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "$PKG"
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          EOF
 
       - name: Build Debug APK
         run: gradle assembleDebug --no-daemon
@@ -35,3 +56,4 @@ jobs:
         with:
           name: LGRemote-apk
           path: app/build/outputs/apk/debug/*.apk
+
