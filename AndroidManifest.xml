@@ -7,8 +7,9 @@
         android:required="false" />
 
     <application
+        android:icon="@drawable/ic_launcher"
         android:allowBackup="false"
-        android:label="Пульт LG"
+        android:label="MyPult"
         android:theme="@android:style/Theme.Material.NoActionBar">
         <activity
             android:name=".MainActivity"
